@@ -90,6 +90,7 @@ namespace ucsc_hn_lib {
          bool processChunk(uint8_t *&data, uint32_t &length);
          bool frameRx(uint8_t *data, uint32_t length);
          void convertFile ( std::string inFile, std::string outFile);
+         void convertFile_test(std::string inFile, std::string outFile);
    };
 
    typedef std::shared_ptr<ucsc_hn_lib::RenaDataFormat> RenaDataFormatPtr;
