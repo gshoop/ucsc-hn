@@ -439,3 +439,21 @@ void ucsc_hn_lib::RenaDataFormat::convertFile ( std::string inFile, std::string 
    closeFile();
 }
 
+void ucsc_hn_lib::RenaDataFormat::convertFile_test ( std::string inFile, std::string outFile) {
+   int fout;
+   char *outStr;
+
+   openFile(inFile);
+
+   if ( ( fout = open(outFile.c_str(), O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) < 0)
+      throw(rogue::GeneralError::create("RenaDataFormat::convert", "Failed to open output file: %s", outFile.c_str()));
+
+   while ( readFile() ) {
+      outStr = getStrData();
+      write(fout,outStr,strlen(outStr));
+   }
+
+   close(fout);
+   closeFile();
+}
+
