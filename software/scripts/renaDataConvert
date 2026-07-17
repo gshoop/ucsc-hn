@@ -37,6 +37,14 @@ parser.add_argument(
     help     = "Update interval",
 )
 
+parser.add_argument(
+    "--tick-ns",
+    type     = float,
+    required = False,
+    default  = 20.0,
+    help     = "Timestamp counter period in ns (50 MHz -> 20 ns/tick). Used to convert the 42-bit timestamp span into elapsed seconds and data rates.",
+)
+
 # Get the arguments
 args = parser.parse_args()
 
@@ -73,13 +81,21 @@ def show_progress(df):
     readFrames = df.getFrameCount()
     dropCount = df.getDropCount()
     sampCount = df.getSampleCount()
+    tsFirst = df.getTsFirst()
+    tsLast = df.getTsLast()
 
     ltime = time.time()
 
-    pct = int((float(fileRead) / float(fileSize)) * 100.0);
-    vPct = int((float(readBytes) / float(fileRead)) * 100.0);
+    pct = int((float(fileRead) / float(fileSize)) * 100.0) if fileSize else 0
+    vPct = int((float(readBytes) / float(fileRead)) * 100.0) if fileRead else 0
 
     print(f"Read {fileRead} of {fileSize} bytes, {pct} pct. Valid = {readBytes}, {vPct} pct, Frames = {readFrames}, drops = {dropCount}, samples = {sampCount}")
+
+    # Reconstruct elapsed acquisition time and rates from the timestamp span
+    elapsed = float(tsLast - tsFirst) * args.tick_ns * 1e-9
+    if elapsed > 0.0:
+        print(f"    Elapsed = {elapsed:.3f} s  |  {readFrames/elapsed:,.1f} frames/s, "
+              f"{sampCount/elapsed:,.1f} hits/s, {readBytes/elapsed/1e3:,.1f} kB/s")
 
 while runThread.is_alive():
 

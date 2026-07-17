@@ -68,6 +68,8 @@ void ucsc_hn_lib::RenaDataFormat::setup_python() {
       .def("getSampleCount", &ucsc_hn_lib::RenaDataFormat::getSampleCount)
       .def("getFileSize",    &ucsc_hn_lib::RenaDataFormat::getFileSize)
       .def("getFileRead",    &ucsc_hn_lib::RenaDataFormat::getFileRead)
+      .def("getTsFirst",     &ucsc_hn_lib::RenaDataFormat::getTsFirst)
+      .def("getTsLast",      &ucsc_hn_lib::RenaDataFormat::getTsLast)
       .def("convertFile",    &ucsc_hn_lib::RenaDataFormat::convertFile)
       .def("openFile",       &ucsc_hn_lib::RenaDataFormat::openFile)
       .def("closeFile",      &ucsc_hn_lib::RenaDataFormat::closeFile)
@@ -90,6 +92,11 @@ void ucsc_hn_lib::RenaDataFormat::countReset () {
    rxFrameCount_ = 0;
    rxDropCount_ = 0;
    rxSampleCount_ = 0;
+   tsFirst_ = 0;
+   tsLast_ = 0;
+   tsLastRaw_ = 0;
+   tsWrap_ = 0;
+   tsValid_ = false;
 }
 
 uint64_t ucsc_hn_lib::RenaDataFormat::getByteCount() {
@@ -114,6 +121,14 @@ uint64_t ucsc_hn_lib::RenaDataFormat::getFileSize() {
 
 uint64_t ucsc_hn_lib::RenaDataFormat::getFileRead() {
    return fileRead_;
+}
+
+uint64_t ucsc_hn_lib::RenaDataFormat::getTsFirst() {
+   return tsFirst_;
+}
+
+uint64_t ucsc_hn_lib::RenaDataFormat::getTsLast() {
+   return tsLast_;
 }
 
 uint8_t  ucsc_hn_lib::RenaDataFormat::getNodeId() {
@@ -323,6 +338,23 @@ bool ucsc_hn_lib::RenaDataFormat::frameRx(uint8_t *data, uint32_t size) {
    // Valid frame received
    ++rxFrameCount_;
 
+   // Track timestamp span for data-rate reconstruction. The 42-bit counter
+   // runs at 50 MHz (20 ns/tick) and wraps at 2^42. Only treat a large
+   // backward jump (> 2^41) as a wrap, so cross-FPGA reordering of the
+   // (synchronized) timebases does not trigger a false wrap.
+   if ( ! tsValid_ ) {
+      tsFirst_ = timeStamp_;
+      tsLast_ = timeStamp_;
+      tsLastRaw_ = timeStamp_;
+      tsWrap_ = 0;
+      tsValid_ = true;
+   }
+   else {
+      if ( timeStamp_ + (1ULL << 41) < tsLastRaw_ ) tsWrap_ += (1ULL << 42);
+      tsLastRaw_ = timeStamp_;
+      tsLast_ = timeStamp_ + tsWrap_;
+   }
+
    // Extract data PHA, U and V ADC values for each channel
    bit = 1;
    for ( ch=0; ch < 36; ch++ ) {
@@ -425,6 +457,9 @@ void ucsc_hn_lib::RenaDataFormat::convertFile ( std::string inFile, std::string 
    int fout;
    char *outStr;
 
+   // Release the GIL for the whole conversion so a Python progress thread can run
+   rogue::GilRelease noGil;
+
    openFile(inFile);
 
    if ( ( fout = open(outFile.c_str(), O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) < 0)
@@ -442,6 +477,9 @@ void ucsc_hn_lib::RenaDataFormat::convertFile ( std::string inFile, std::string 
 void ucsc_hn_lib::RenaDataFormat::convertFile_test ( std::string inFile, std::string outFile) {
    int fout;
    char *outStr;
+
+   // Release the GIL for the whole conversion so a Python progress thread can run
+   rogue::GilRelease noGil;
 
    openFile(inFile);
 

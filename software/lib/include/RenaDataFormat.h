@@ -42,6 +42,13 @@ namespace ucsc_hn_lib {
          uint64_t fileSize_;
          uint64_t fileRead_;
 
+         // Timestamp span tracking (42-bit counter @ 50 MHz, 20 ns/tick)
+         uint64_t tsFirst_;   // timestamp of first valid frame
+         uint64_t tsLast_;    // timestamp of latest valid frame, wrap-extended
+         uint64_t tsLastRaw_; // last raw (un-extended) timestamp, for wrap detect
+         uint64_t tsWrap_;    // accumulated 2^42 wrap offset
+         bool     tsValid_;   // false until first valid frame seen
+
          // File tracking
          int fin_;
          uint8_t finBuff_[8192];
@@ -68,6 +75,8 @@ namespace ucsc_hn_lib {
          uint32_t getSampleCount();
          uint64_t getFileSize();
          uint64_t getFileRead();
+         uint64_t getTsFirst();
+         uint64_t getTsLast();
 
          uint8_t  getNodeId();
          uint8_t  getRenaId();
