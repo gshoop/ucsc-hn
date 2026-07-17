@@ -49,9 +49,10 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.local:
-    pyrogue.addLibraryPath('../../firmware/submodules/rce-gen3-fw-lib/python')
-    pyrogue.addLibraryPath('../../firmware/submodules/surf/python')
-    pyrogue.addLibraryPath('../../firmware/python')
+    # renaDataConvert only uses the local ucsc_hn_lib C++ module (../python).
+    # It does not import the firmware rogue tree, so we must NOT require the
+    # firmware submodule paths here -- those submodules are often un-inited in
+    # a fresh checkout and would make --local fail before conversion starts.
     pyrogue.addLibraryPath('../python')
 
 if args.output is None:
