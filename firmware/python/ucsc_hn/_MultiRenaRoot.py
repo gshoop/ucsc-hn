@@ -29,6 +29,8 @@ class MultiRenaRoot(pyrogue.Root):
 
         self.add(ucsc_hn.ChannelSelect(nodeCount=len(host)))
 
+        self.add(ucsc_hn.HistogramView(nodeCount=len(host)))
+
         for node in range(1,len(host)+1):
             for rena in range(1,31):
 

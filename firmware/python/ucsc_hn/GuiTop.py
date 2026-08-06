@@ -66,6 +66,9 @@ class GuiTop(Display):
         chan = ucsc_hn.ChannelWindow(parent=None, init_channel=Channel+'.ChannelSelect')
         self.tab.addTab(chan,'Channel Configuration')
 
+        hist = ucsc_hn.HistogramWindow(parent=None, init_channel=Channel+'.HistogramView')
+        self.tab.addTab(hist,'Channel Histogram')
+
         var = DebugTree(parent=None, init_channel=Channel)
         self.tab.addTab(var,'Debug Tree')
 

@@ -12,6 +12,8 @@ from ._DataDecoder   import *
 from ._RunControl    import *
 from ._ChannelSel    import *
 from ._ChannelWindow import *
+from ._HistogramView   import *
+from ._HistogramWindow import *
 from ._RateTestRoot  import *
 from ._Fifo          import *
 from ._RenaDataEmulator import *

@@ -7,6 +7,7 @@
 #include <rogue/interfaces/stream/Frame.h>
 #include <rogue/protocols/batcher/Data.h>
 #include <rogue/Logging.h>
+#include <boost/python.hpp>
 
 namespace ucsc_hn_lib {
 
@@ -26,6 +27,13 @@ namespace ucsc_hn_lib {
          uint32_t rxTotal_[31];
          uint32_t decodeEn_;
          std::shared_ptr<rogue::Logging> dlog_;
+
+         uint32_t chanCount_[31][2][36];
+         uint32_t histData_[4096];
+         uint32_t histEn_;
+         uint8_t  histFpga_;
+         uint8_t  histRena_;
+         uint8_t  histChan_;
 
       public:
 
@@ -57,6 +65,22 @@ namespace ucsc_hn_lib {
 
          uint32_t getRxCount(uint8_t fpga);
          uint32_t getRxTotal(uint8_t fpga);
+
+         void setHistChannel(uint8_t fpga, uint8_t rena, uint8_t chan);
+
+         void setHistEnable(uint32_t enable);
+
+         uint32_t getHistEnable();
+
+         void resetHistogram();
+
+         void resetChanCounts();
+
+         uint32_t getChanCount(uint8_t fpga, uint8_t rena, uint8_t chan);
+
+         boost::python::list getChanCountList(uint8_t fpga, uint8_t rena);
+
+         boost::python::list getHistogram();
 
          void sendDiag ( std::shared_ptr<rogue::protocols::batcher::Data> data);
 

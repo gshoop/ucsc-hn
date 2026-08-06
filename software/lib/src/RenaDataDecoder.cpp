@@ -35,12 +35,25 @@ void ucsc_hn_lib::RenaDataDecoder::setup_python() {
       .def("getRxTotal",         &ucsc_hn_lib::RenaDataDecoder::getRxTotal)
       .def("getDecodeEnable",    &ucsc_hn_lib::RenaDataDecoder::getDecodeEnable)
       .def("setDecodeEnable",    &ucsc_hn_lib::RenaDataDecoder::setDecodeEnable)
+      .def("setHistChannel",     &ucsc_hn_lib::RenaDataDecoder::setHistChannel)
+      .def("setHistEnable",      &ucsc_hn_lib::RenaDataDecoder::setHistEnable)
+      .def("getHistEnable",      &ucsc_hn_lib::RenaDataDecoder::getHistEnable)
+      .def("resetHistogram",     &ucsc_hn_lib::RenaDataDecoder::resetHistogram)
+      .def("resetChanCounts",    &ucsc_hn_lib::RenaDataDecoder::resetChanCounts)
+      .def("getChanCount",       &ucsc_hn_lib::RenaDataDecoder::getChanCount)
+      .def("getChanCountList",   &ucsc_hn_lib::RenaDataDecoder::getChanCountList)
+      .def("getHistogram",       &ucsc_hn_lib::RenaDataDecoder::getHistogram)
    ;
 }
 
 ucsc_hn_lib::RenaDataDecoder::RenaDataDecoder (uint8_t nodeId) {
    uint32_t f,r,c,i,j;
    unsigned char crc;
+
+   histEn_ = 0;
+   histFpga_ = 1;
+   histRena_ = 0;
+   histChan_ = 0;
 
    countReset();
    nodeId_ = nodeId;
@@ -76,6 +89,8 @@ void ucsc_hn_lib::RenaDataDecoder::countReset () {
    for (f=0; f < 31; f++) rxCount_[f] = 0;
    for (f=0; f < 31; f++) rxTotal_[f] = 0;
 
+   resetChanCounts();
+   resetHistogram();
 }
 
 void ucsc_hn_lib::RenaDataDecoder::setChannelPolarity(uint8_t fpga, uint8_t rena, uint8_t chan, uint8_t state) {
@@ -124,6 +139,58 @@ void ucsc_hn_lib::RenaDataDecoder::setDecodeEnable(uint32_t enable) {
 
 uint32_t ucsc_hn_lib::RenaDataDecoder::getDecodeEnable() {
    return decodeEn_;
+}
+
+void ucsc_hn_lib::RenaDataDecoder::setHistChannel(uint8_t fpga, uint8_t rena, uint8_t chan) {
+   if ( fpga > 30 || rena > 1 || chan > 35 ) return;
+   histFpga_ = fpga;
+   histRena_ = rena;
+   histChan_ = chan;
+   resetHistogram();
+}
+
+void ucsc_hn_lib::RenaDataDecoder::setHistEnable(uint32_t enable) {
+   histEn_ = enable;
+}
+
+uint32_t ucsc_hn_lib::RenaDataDecoder::getHistEnable() {
+   return histEn_;
+}
+
+void ucsc_hn_lib::RenaDataDecoder::resetHistogram() {
+   uint32_t x;
+   for (x=0; x < 4096; x++) histData_[x] = 0;
+}
+
+void ucsc_hn_lib::RenaDataDecoder::resetChanCounts() {
+   uint32_t f,r,c;
+   for (f=0; f < 31; f++)
+      for (r=0; r < 2; r++)
+         for (c=0; c < 36; c++)
+            chanCount_[f][r][c] = 0;
+}
+
+uint32_t ucsc_hn_lib::RenaDataDecoder::getChanCount(uint8_t fpga, uint8_t rena, uint8_t chan) {
+   if ( fpga > 30 || rena > 1 || chan > 35 ) return 0;
+   return chanCount_[fpga][rena][chan];
+}
+
+boost::python::list ucsc_hn_lib::RenaDataDecoder::getChanCountList(uint8_t fpga, uint8_t rena) {
+   boost::python::list ret;
+   uint32_t c;
+
+   if ( fpga > 30 || rena > 1 ) return ret;
+
+   for (c=0; c < 36; c++) ret.append(chanCount_[fpga][rena][c]);
+   return ret;
+}
+
+boost::python::list ucsc_hn_lib::RenaDataDecoder::getHistogram() {
+   boost::python::list ret;
+   uint32_t x;
+
+   for (x=0; x < 4096; x++) ret.append(histData_[x]);
+   return ret;
 }
 
 void ucsc_hn_lib::RenaDataDecoder::sendDiag ( rpb::DataPtr data ) {
@@ -423,6 +490,13 @@ void ucsc_hn_lib::RenaDataDecoder::acceptFrame ( ris::FramePtr frame ) {
 
              // Lookup polarity
              polarity = getChannelPolarity(fpgaId,renaId,ch);
+
+             // Update per channel counter
+             if ( fpgaId < 31 ) chanCount_[fpgaId][renaId][ch]++;
+
+             // Accumulate histogram for the monitored channel
+             if ( histEn_ && readPHA && fpgaId == histFpga_ && renaId == histRena_ &&
+                  ch == histChan_ && phaData < 4096 ) histData_[phaData]++;
 
              // Start frame data
              toFrame(dPtr,1,&ch); // Channel ID
